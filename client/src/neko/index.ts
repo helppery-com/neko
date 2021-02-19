@@ -39,6 +39,7 @@ export class NekoClient extends BaseClient implements EventEmitter<NekoEvents> {
     this.$accessor.user.reset()
     this.$accessor.video.reset()
     this.$accessor.chat.reset()
+    this.$accessor.room.disConnect()
   }
 
   login(password: string, displayname: string) {
@@ -141,6 +142,8 @@ export class NekoClient extends BaseClient implements EventEmitter<NekoEvents> {
         type: 'event',
         created: new Date(),
       })
+    } else {
+      this.$accessor.room.connect()
     }
   }
 

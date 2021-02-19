@@ -14,6 +14,7 @@ export const connect = {
   displayname: 'Display Name',
   password: 'Password',
   connect: 'Connect',
+  room: 'Room'
 }
 
 export const context = {

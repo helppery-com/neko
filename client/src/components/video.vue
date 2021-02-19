@@ -501,7 +501,7 @@
         return
       }
       this.onMousePos(e)
-      this.$client.sendData('mousedown', { key: e.button + 1 })
+      this.$client.sendData('mousedown', { key: e.button })
     }
 
     onMouseUp(e: MouseEvent) {
@@ -509,7 +509,7 @@
         return
       }
       this.onMousePos(e)
-      this.$client.sendData('mouseup', { key: e.button + 1 })
+      this.$client.sendData('mouseup', { key: e.button })
     }
 
     onMouseMove(e: MouseEvent) {

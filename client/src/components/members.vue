@@ -4,7 +4,8 @@
       <ul class="members-list">
         <li v-if="member">
           <div :class="[{ host: member.id === host }, 'self', 'member']">
-            <img :src="`https://ui-avatars.com/api/?name=${member.displayname}.png&size=50`" />
+            <UserVideo :stream="hostStream" v-if="hostVideo" />
+            <img :src="`https://ui-avatars.com/api/?name=${member.displayname}.png&size=50`" v-else/>
           </div>
         </li>
         <template v-for="(member, index) in members">
@@ -14,9 +15,11 @@
             v-tooltip="{ content: member.displayname, placement: 'bottom', offset: -15, boundariesElement: 'body' }"
           >
             <div :class="[{ host: member.id === host, admin: member.admin }, 'member']">
+              <UserVideo :stream="guestStream(member.id)" v-if="guestVideo(member.id)" />
               <img
                 :src="`https://ui-avatars.com/api/?name=${member.displayname}.png&size=50`"
                 @contextmenu.stop.prevent="onContext($event, { member })"
+                v-else
               />
             </div>
           </li>
@@ -71,8 +74,8 @@
           .member {
             position: relative;
             display: block;
-            width: 50px;
-            height: 50px;
+            width: 80px;
+            height: 80px;
             margin: 10px 5px 0 5px;
 
             &.self {
@@ -158,7 +161,7 @@
 
 <script lang="ts">
   import { Component, Ref, Watch, Vue } from 'vue-property-decorator'
-  import { Member } from '~/neko/types'
+  import UserVideo from '~/components/UserVideo.vue'
 
   import Content from './context.vue'
 
@@ -166,6 +169,7 @@
     name: 'neko-members',
     components: {
       'neko-context': Content,
+      UserVideo
     },
   })
   export default class extends Vue {
@@ -185,6 +189,23 @@
 
     get members() {
       return this.$accessor.user.members
+    }
+
+    get hostVideo () {
+      return this.$accessor.room.connected
+    }
+
+    get hostStream () {
+      return this.$accessor.room.userStream
+    }
+
+    guestVideo (id: string) {
+      return !!this.guestStream(id)
+    }
+
+    guestStream (id: string) {
+      // @ts-ignore
+      return this.$accessor.room.guestStreams[id]
     }
 
     onContext(event: MouseEvent, data: any) {

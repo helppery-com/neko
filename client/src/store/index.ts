@@ -11,6 +11,7 @@ import * as user from './user'
 import * as settings from './settings'
 import * as client from './client'
 import * as emoji from './emoji'
+import * as room from './room'
 
 export const state = () => ({
   displayname: get<string>('displayname', ''),
@@ -19,6 +20,7 @@ export const state = () => ({
   connecting: false,
   connected: false,
   locked: false,
+  roomId: get<string>('roomId', '')
 })
 
 export const mutations = mutationTree(state, {
@@ -26,9 +28,10 @@ export const mutations = mutationTree(state, {
     state.active = true
   },
 
-  setLogin(state, { displayname, password }: { displayname: string; password: string }) {
+  setLogin(state, { roomId, displayname, password }: { roomId: string; displayname: string; password: string }) {
     state.displayname = displayname
     state.password = password
+    state.roomId = roomId
   },
 
   setLocked(state, locked: boolean) {
@@ -46,6 +49,7 @@ export const mutations = mutationTree(state, {
     if (connected) {
       set('displayname', state.displayname)
       set('password', state.password)
+      set('roomId', state.roomId)
     }
   },
 })
@@ -74,13 +78,13 @@ export const actions = actionTree(
       $client.sendMessage(EVENT.ADMIN.UNLOCK)
     },
 
-    login({ state }, { displayname, password }: { displayname: string; password: string }) {
-      accessor.setLogin({ displayname, password })
+    login({ state }, { roomId, displayname, password }: { roomId: string; displayname: string; password: string }) {
+      accessor.setLogin({ roomId, displayname, password })
       $client.login(password, displayname)
     },
 
     logout({ state }) {
-      accessor.setLogin({ displayname: '', password: '' })
+      accessor.setLogin({ roomId: '', displayname: '', password: '' })
       set('displayname', '')
       set('password', '')
       $client.logout()
@@ -92,7 +96,7 @@ export const storePattern = {
   state,
   mutations,
   actions,
-  modules: { video, chat, user, remote, settings, client, emoji },
+  modules: { video, chat, user, remote, settings, client, emoji, room },
 }
 
 Vue.use(Vuex)
@@ -107,5 +111,8 @@ declare module 'vue/types/vue' {
     $accessor: typeof accessor
   }
 }
-
+/*@ts-ignore */
+window.$store = store // DEBUG
+/*@ts-ignore */
+window.$accessor = accessor // DEBUG
 export default store

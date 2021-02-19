@@ -1,6 +1,12 @@
 <template>
   <ul>
     <li v-if="!isTouch">
+      <i :class="[video ? 'fa-video-slash' : 'fa-video', 'fas', 'btn']"
+        @click.stop.prevent="toggleVideo"
+      />
+      <i :class="[audio ? 'fa-microphone-slash' : 'fa-microphone', 'fas', 'btn']"
+        @click.stop.prevent="toggleAudio"
+      />
       <i
         :class="[
           hosted && !hosting ? 'disabled' : '',
@@ -196,9 +202,13 @@
 
 <script lang="ts">
   import { Vue, Component } from 'vue-property-decorator'
-
-  @Component({ name: 'neko-controls' })
+  @Component({
+    name: 'neko-controls',
+    components: { }
+  })
   export default class extends Vue {
+    audio: boolean = false
+    video: boolean = false
     get isTouch() {
       return (
         (typeof navigator.maxTouchPoints !== 'undefined' ? navigator.maxTouchPoints < 0 : false) ||
@@ -258,6 +268,14 @@
 
     toggleMute() {
       this.$accessor.video.toggleMute()
+    }
+
+    toggleVideo () {
+      this.video = !this.video
+    }
+
+    toggleAudio () {
+      this.audio = !this.audio
     }
   }
 </script>

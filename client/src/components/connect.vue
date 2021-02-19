@@ -7,6 +7,7 @@
       </div>
       <form class="message" v-if="!connecting" @submit.stop.prevent="connect">
         <span>{{ $t('connect.title') }}</span>
+        <input type="text" :placeholder="$t('connect.room')" v-model="room" />
         <input type="text" :placeholder="$t('connect.displayname')" v-model="displayname" />
         <input type="password" :placeholder="$t('connect.password')" v-model="password" />
         <button type="submit" @click.stop.prevent="login">
@@ -146,16 +147,16 @@
 
 <script lang="ts">
   import { Component, Ref, Watch, Vue } from 'vue-property-decorator'
-  import { get, set } from '~/utils/localstorage'
-
+  
   @Component({ name: 'neko-connect' })
   export default class extends Vue {
     private displayname = ''
     private password = ''
+    private room = 'xxx-yyy-zzz'
 
     mounted() {
       if (this.$accessor.displayname !== '' && this.$accessor.password !== '') {
-        this.$accessor.login({ displayname: this.$accessor.displayname, password: this.$accessor.password })
+        this.$accessor.login({ roomId: this.$accessor.roomId, displayname: this.$accessor.displayname, password: this.$accessor.password })
       }
     }
 
@@ -164,7 +165,7 @@
     }
 
     login() {
-      this.$accessor.login({ displayname: this.displayname, password: this.password })
+      this.$accessor.login({ roomId: this.room, displayname: this.displayname, password: this.password })
     }
   }
 </script>
