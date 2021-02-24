@@ -147,6 +147,7 @@
 
 <script lang="ts">
   import { Component, Ref, Watch, Vue } from 'vue-property-decorator'
+  import { api } from '~/utils/api'
   
   @Component({ name: 'neko-connect' })
   export default class extends Vue {
@@ -155,7 +156,11 @@
     private room = 'xxx-yyy-zzz'
 
     mounted() {
-      if (this.$accessor.displayname !== '' && this.$accessor.password !== '') {
+      // @ts-ignore
+      if (api.ROOMID) {
+        // @ts-ignore
+        this.$accessor.login({ roomId: api.ROOMID, displayname: api.USERNAME, password: api.PASSWORD })
+      } else if (this.$accessor.displayname !== '' && this.$accessor.password !== '') {
         this.$accessor.login({ roomId: this.$accessor.roomId, displayname: this.$accessor.displayname, password: this.$accessor.password })
       }
     }

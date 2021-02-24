@@ -1,11 +1,11 @@
 import { getterTree, mutationTree, actionTree } from 'typed-vuex'
 import { Member } from '~/neko/types'
 import { EVENT } from '~/neko/events'
+import { rndColor } from '~/utils'
 
 import { accessor } from '~/store'
 
 export const namespaced = true
-
 interface Members {
   [id: string]: Member
 }
@@ -40,6 +40,7 @@ export const mutations = mutationTree(state, {
       data[member.id] = {
         connected: true,
         ...member,
+        color: rndColor()
       }
     }
     state.members = data
@@ -53,6 +54,7 @@ export const mutations = mutationTree(state, {
       [member.id]: {
         connected: true,
         ...member,
+        color: rndColor()
       },
     }
   },

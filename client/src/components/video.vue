@@ -1,5 +1,5 @@
 <template>
-  <div ref="component" class="video">
+  <div ref="component" class="neko-video">
     <div ref="player" class="player">
       <div ref="container" class="player-container">
         <video ref="video" />
@@ -20,6 +20,8 @@
           @mouseup.stop.prevent="onMouseUp"
           @mouseenter.stop.prevent="onMouseEnter"
           @mouseleave.stop.prevent="onMouseLeave"
+          @keydown.stop.prevent="onKeyDown"
+          @keyup.stop.prevent="onKeyUp"
         />
         <div v-if="!playing" class="player-overlay">
           <i @click.stop.prevent="toggle" v-if="playable" class="fas fa-play-circle" />
@@ -29,20 +31,14 @@
       <ul v-if="!fullscreen" class="video-menu">
         <li><i @click.stop.prevent="requestFullscreen" class="fas fa-expand"></i></li>
         <li v-if="admin"><i @click.stop.prevent="onResolution" class="fas fa-desktop"></i></li>
-        <li class="request-control">
-          <i
-            :class="[hosted && !hosting ? 'disabled' : '', !hosted && !hosting ? 'faded' : '', 'fas', 'fa-keyboard']"
-            @click.stop.prevent="toggleControl"
-          />
-        </li>
       </ul>
       <neko-resolution ref="resolution" />
     </div>
   </div>
 </template>
 
-<style lang="scss" scoped>
-  .video {
+<style lang="scss">
+  .neko-video {
     width: 100%;
     height: 100%;
 
@@ -70,24 +66,6 @@
             text-align: center;
             color: rgba($color: #fff, $alpha: 0.6);
             cursor: pointer;
-
-            &.faded {
-              color: rgba($color: $text-normal, $alpha: 0.4);
-            }
-
-            &.disabled {
-              color: rgba($color: $style-error, $alpha: 0.4);
-            }
-          }
-
-          &.request-control {
-            display: none;
-          }
-
-          @media (max-width: 768px) {
-            &.request-control {
-              display: inline-block;
-            }
           }
         }
       }
@@ -164,7 +142,10 @@
   import Emote from './emote.vue'
   import Resolution from './resolution.vue'
 
-  import GuacamoleKeyboard from '~/utils/guacamole-keyboard.ts'
+  interface MousePosition {
+    x: number,
+    y: number
+  }
 
   @Component({
     name: 'neko-video',
@@ -182,10 +163,11 @@
     @Ref('video') readonly _video!: HTMLVideoElement
     @Ref('resolution') readonly _resolution!: any
 
-    private keyboard = GuacamoleKeyboard()
     private observer = new ResizeObserver(this.onResise.bind(this))
     private focused = false
     private fullscreen = false
+    private lastMousePosition!: MousePosition
+    private mouseMoveInterval!: number
 
     get admin() {
       return this.$accessor.user.admin
@@ -201,10 +183,6 @@
 
     get hosting() {
       return this.$accessor.remote.hosting
-    }
-
-    get hosted() {
-      return this.$accessor.remote.hosted
     }
 
     get volume() {
@@ -269,6 +247,14 @@
 
     get horizontal() {
       return this.$accessor.video.horizontal
+    }
+
+    created () {
+      this.mouseMoveInterval = window.setInterval(this.sendMouseLastPosition.bind(this), 50)
+    }
+
+    destroyed () {
+      clearInterval(this.mouseMoveInterval)
     }
 
     @Watch('width')
@@ -356,39 +342,18 @@
         this.$accessor.video.setPlayable(false)
       })
 
-      this._video.addEventListener('error', (event) => {
+      this._video.addEventListener('error', event => {
         this.$log.error(event.error)
         this.$accessor.video.setPlayable(false)
       })
 
       document.addEventListener('focusin', this.onFocus.bind(this))
-      document.addEventListener('focusout', this.onBlur.bind(this))
-
-      /* Initialize Guacamole Keyboard */
-      this.keyboard.onkeydown = (key: number) => {
-        if (!this.focused || !this.hosting || this.locked) {
-          return true
-        }
-
-        this.$client.sendData('keydown', { key })
-        return false
-      }
-      this.keyboard.onkeyup = (key: number) => {
-        if (!this.focused || !this.hosting || this.locked) {
-          return
-        }
-
-        this.$client.sendData('keyup', { key })
-      }
-      this.keyboard.listenTo(this._overlay)
     }
 
     beforeDestroy() {
       this.observer.disconnect()
       this.$accessor.video.setPlayable(false)
       document.removeEventListener('focusin', this.onFocus.bind(this))
-      document.removeEventListener('focusout', this.onBlur.bind(this))
-      /* Guacamole Keyboard does not provide destroy functions */
     }
 
     play() {
@@ -402,7 +367,7 @@
           .then(() => {
             this.onResise()
           })
-          .catch((err) => this.$log.error)
+          .catch(err => this.$log.error)
       } catch (err) {
         this.$log.error(err)
       }
@@ -428,14 +393,6 @@
       }
     }
 
-    toggleControl() {
-      if (!this.playable) {
-        return
-      }
-
-      this.$accessor.remote.toggle()
-    }
-
     requestFullscreen() {
       this._player.requestFullscreen()
       this.onResise()
@@ -449,7 +406,7 @@
       if (this.hosting && navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
         navigator.clipboard
           .readText()
-          .then((text) => {
+          .then(text => {
             if (this.clipboard !== text) {
               this.$accessor.remote.setClipboard(text)
               this.$accessor.remote.sendClipboard(text)
@@ -459,21 +416,23 @@
       }
     }
 
-    onBlur() {
-      if (!this.focused || !this.hosting || this.locked) {
-        return
-      }
-
-      this.keyboard.reset()
-    }
-
     onMousePos(e: MouseEvent) {
       const { w, h } = this.$accessor.video.resolution
       const rect = this._overlay.getBoundingClientRect()
-      this.$client.sendData('mousemove', {
+      this.lastMousePosition = {
         x: Math.round((w / rect.width) * (e.clientX - rect.left)),
         y: Math.round((h / rect.height) * (e.clientY - rect.top)),
-      })
+      }
+    }
+
+    sendMouseLastPosition () {
+      if (this.lastMousePosition) {
+        try {
+          this.$client.sendData('mousemove', this.lastMousePosition)
+        } finally {
+          this.lastMousePosition = null
+        }
+      }
     }
 
     onWheel(e: WheelEvent) {
@@ -527,6 +486,40 @@
 
     onMouseLeave(e: MouseEvent) {
       this.focused = false
+    }
+
+    // frick you firefox
+    getCode(e: KeyboardEvent): number {
+      let key = e.keyCode
+      if (key === 59 && e.key === ';') {
+        key = 186
+      }
+
+      if (key === 61 && e.key === '=') {
+        key = 187
+      }
+
+      if (key === 173 && e.key === '-') {
+        key = 189
+      }
+
+      return key
+    }
+
+    onKeyDown(e: KeyboardEvent) {
+      if (!this.focused || !this.hosting || this.locked) {
+        return
+      }
+
+      this.$client.sendData('keydown', { key: this.getCode(e) })
+    }
+
+    onKeyUp(e: KeyboardEvent) {
+      if (!this.focused || !this.hosting || this.locked) {
+        return
+      }
+
+      this.$client.sendData('keyup', { key: this.getCode(e) })
     }
 
     onResise() {

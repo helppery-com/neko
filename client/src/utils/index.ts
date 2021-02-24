@@ -7,3 +7,13 @@ export function makeid(length: number) {
   }
   return result
 }
+
+export function random(max, min) {
+  min = min === undefined ? 0: min
+  return Math.floor(Math.random() * max) + min
+}
+
+const userPalette = ["ff9f1c","e086d3","8332ac","cbf3f0","2ec4b6","dd614a","ffc15e","e4b7e5","18314f","73a580"]
+export function rndColor() {
+  return userPalette[random(userPalette.length)]
+}

@@ -43,9 +43,10 @@ export class RTCNavroom {
     connection.password = this.room.roomPassword
     connection.socketURL = 'https://rtcmulticonnection.herokuapp.com/' //process.env.RTC_IO_SERVER
 
+    await this.initRTC()
     connection.session = {
-      audio: true,
-      video: true,
+      audio: connection.DetectRTC.hasMicrophone,
+      video: connection.DetectRTC.hasWebcam,
       data: true
     }
     if (this.lowBandwith) {
@@ -83,7 +84,7 @@ export class RTCNavroom {
     connection.socketMessageEvent = 'channel-' + roomId
     connection.channel = connection.sessionid = roomId
 
-    // connection.chunkSize = chunk_size;
+    // connection.chunkSize = chunk_size
     
     connection.onstream = this.onStream.bind(this)
 
@@ -107,21 +108,51 @@ export class RTCNavroom {
     /* if (this.isHost) {
       connection.onNewParticipant = this.onNewParticipant.bind(this)
     } */
-    this.connect()
+    return this.connect()
+  }
+
+  async initRTC () {
+    return new Promise((resolve, reject) => {
+      if (!this.connection.DetectRTC.isWebRTCSupported) {
+        return reject('WebRTC is not supported')
+      }
+      try {
+        this.connection.DetectRTC.load(resolve)
+      } catch (ex) {
+        console.log(error)
+        reject()
+      }
+    })
   }
 
   // @Log
   connect () {
+    let resolve = null
+    let reject = null
+    const promise = new Promise((res, rej) => {
+      resolve = res
+      reject = rej
+    })
     let roomId = this.room.roomId || new Date()
-    const onOpenOrJoin = this.onOpenOrJoin.bind(this)
+    const onOpenOrJoin = (isRoomExist, roomId, error) => {
+      // logging.info('Join RTC room', isRoomExist, roomId, error)
+      if (error) {
+        this.connectError = error
+        reject()
+      } else {
+        this.connectedRoomId = roomId
+        resolve(this)
+      }
+    }
     this.connection.checkPresence(roomId, (isRoomExist, roomid, roomInfo) => {
       // logging.info('RTC check presence', roomInfo)
       if (isRoomExist) {
-          this.connection.join(roomid, onOpenOrJoin);
+          this.connection.join(roomid, onOpenOrJoin)
       } else {
-          this.connection.open(roomid, onOpenOrJoin);
+          this.connection.open(roomid, onOpenOrJoin)
       }
-    });
+    })
+    return promise
   }
 
   get isTemp () {
@@ -145,7 +176,7 @@ export class RTCNavroom {
       org.call(this.connection, e)
       this.updatedAt = e.updatedAt = new Date()
       if (e.muteType === 'video') {
-        e.mediaElement.setAttribute('poster', '/incognito-mode.png');
+        e.mediaElement.setAttribute('poster', '/incognito-mode.png')
       }
     }
   }
@@ -180,20 +211,10 @@ export class RTCNavroom {
   }
 
   // @Log
-  onOpenOrJoin (isRoomExist, roomId, error) {
-    // logging.info('Join RTC room', isRoomExist, roomId, error)
-    if (error) {
-      this.connectError = error
-    } else {
-      this.connectedRoomId = roomId
-    }
-  }
-
-  // @Log
   onUserIdAlreadyTaken (useridAlreadyTaken, yourNewUserId) {
     // logging.warn('Userid already taken.', useridAlreadyTaken, 'Your new userid:', yourNewUserId)
     this.connection.userid = this.connection.token()
-    this.connect();
+    this.connect()
   }
 
 
@@ -219,7 +240,7 @@ export class RTCNavroom {
     // userPreferences.dontGetRemoteStream = false  // according to situation
 
     // below line must be included. Above all lines are optional.
-    // if below line is NOT included; "join-request" will be considered rejected.
+    // if below line is NOT included "join-request" will be considered rejected.
     const extra = this.decodeExtra(userPreferences.extra)
     if (this.acceptedParticipants.indexOf(extra.username) === -1) {
       this.waitingUsers.push({participantId: extra.username, userPreferences, extra})
@@ -248,7 +269,7 @@ export class RTCNavroom {
       return
     }
     // disconnect with all users
-    this.connection.getAllParticipants().forEach(pid => this.connection.disconnectWith(pid));
+    this.connection.getAllParticipants().forEach(pid => this.connection.disconnectWith(pid))
 
     // stop all local cameras
     this.connection.attachStreams.forEach(stream =>
